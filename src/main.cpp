@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <format>
 
 int main() {
   // Flush after every std::cout / std:cerr
@@ -8,4 +9,11 @@ int main() {
 
   // TODO: Uncomment the code below to pass the first stage
   std::cout << "$ ";
+
+  std::string command;
+  std::cin >> command;
+
+  std::cout << std::format("{}: command not found", command);
+
+  return 0;
 }
