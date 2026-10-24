@@ -13,7 +13,7 @@ int main() {
       std::string command;
       std::cin >> command;
     
-      std::cout << std::format("{}: command not found", command);
+      std::cout << std::format("{}: command not found", command) << std::endl;
   } while (1 == 1);
 
   return 0;
