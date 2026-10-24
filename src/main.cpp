@@ -7,14 +7,17 @@ int main() {
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
 
+  std::string command;
+
   do {
       std::cout << "$ ";
     
-      std::string command;
       std::cin >> command;
-    
-      std::cout << std::format("{}: command not found", command) << std::endl;
-  } while (1 == 1);
+
+      if (command != "exit") {
+          std::cout << std::format("{}: command not found", command) << std::endl;
+      }
+  } while (command != "exit");
 
   return 0;
 }

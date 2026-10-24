@@ -14,7 +14,12 @@ set -e # Exit early if any commands fail
 # - Edit .codecrafters/compile.sh to change how your program compiles remotely
 (
   cd "$(dirname "$0")" # Ensure compile steps are run within the repository directory
-  cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake
+  if [ -n "${VCPKG_ROOT:-}" ]; then
+    cmake -B build -S . "-DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+  else
+    # Clear any toolchain path cached by a previous run without VCPKG_ROOT.
+    cmake -B build -S . -U CMAKE_TOOLCHAIN_FILE
+  fi
   cmake --build ./build
 )
 
@@ -22,4 +27,4 @@ set -e # Exit early if any commands fail
 #
 # - Edit this to change how your program runs locally
 # - Edit .codecrafters/run.sh to change how your program runs remotely
-exec $(dirname "$0")/build/shell "$@"
+exec "$(dirname "$0")/build/shell" "$@"
