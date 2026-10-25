@@ -3,6 +3,8 @@
 #include <string>
 #include <format>
 #include <filesystem>
+#include <optional>
+#include <unistd.h>
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
@@ -30,12 +32,13 @@ bool file_exists(std::string path) {
 }
 
 bool has_execute_permissions(std::string path) {
-    return std::filesystem::is_regular_file(path) && access(path.c_str(), X_OK) == 0;
+    return std::filesystem::is_regular_file(path) && ACCESS(path.c_str(), X_OK) == 0;
 }
 
-void locate_executable_files(std::string command) {
+std::optional<std::string> locate_executable_files(std::string command) {
     // The PATH environment variable specifies a list of directories where the shell should look for executable programs.
     const char* path = std::getenv("PATH");
+    std::optional<std::string> result = std::nullopt;
     std::stringstream ss(path);
     std::string single_path;
     std::string full_path;
@@ -48,13 +51,25 @@ void locate_executable_files(std::string command) {
             found = true;
 
             if (has_execute_permissions(full_path)) {
-                std::cout << command << " is " << full_path << std::endl;
+                result = full_path;
                 break;
             }
         }
     }
 
-    if (!found) std::cout << command << ": not found" << std::endl;
+    return result;
+}
+
+std::vector<std::string> split(const std::string& str, char separator) {
+    std::vector<std::string> result;
+    std::stringstream ss(str);
+    std::string token;
+
+    while (std::getline(ss, token, separator)) {
+        result.push_back(token);
+    }
+
+    return result;
 }
 
 int main() {
@@ -64,24 +79,50 @@ int main() {
 
   std::string command;
   std::vector<std::string> builtinCommands {"exit", "echo", "type"};
+  std::optional<std::string> run_path = std::nullopt;
 
   do {
       std::cout << "$ ";
     
       std::getline(std::cin, command);
 
-      if (command.substr(0, 5) == "echo ") {
+      std::vector<std::string> full_command = split(command, ' ');
+      std::string single_command = full_command[0];
+
+      if (single_command == "exit") return 0;
+
+      if (single_command == "echo") {
           std::cout << command.substr(5) << std::endl;
       }
-      else if (command.substr(0, 5) == "type ") {
+      else if (single_command == "type") {
           if (find_command(builtinCommands, command.substr(5))) {
               std::cout << command.substr(5) << " is a shell builtin" << std::endl;
           } else {
-              locate_executable_files(command.substr(5));
+              run_path = locate_executable_files(command.substr(5));
+
+              if (run_path.has_value()) {
+                  std::cout << command.substr(5) << " is " << run_path.value() << std::endl;
+              } else {
+                  std::cout << command.substr(5) << ": not found" << std::endl;
+              }
           }
       }
-      else if (command != "exit") {
-          std::cout << std::format("{}: command not found", command) << std::endl;
+      else {
+          run_path = locate_executable_files(single_command);
+
+          if (run_path.has_value()) {
+              std::vector<char*> argv;
+              
+              for (auto& arg : full_command) {
+                  argv.push_back(arg.data());
+              }
+
+              argv.push_back(nullptr);
+              
+              execv(run_path.value().c_str(), argv.data());
+          } else {
+              std::cout << std::format("{}: command not found", command) << std::endl;
+          }
       }
   } while (command != "exit");
 
