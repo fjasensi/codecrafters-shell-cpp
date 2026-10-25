@@ -1,9 +1,11 @@
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <format>
 #include <filesystem>
 #include <optional>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 #include <algorithm>
@@ -118,8 +120,25 @@ int main() {
               }
 
               argv.push_back(nullptr);
-              
-              execv(run_path.value().c_str(), argv.data());
+
+              pid_t pid = fork();
+
+              // Child process
+              if (pid == 0) {
+                  execv(run_path.value().c_str(), argv.data());
+
+                  // only come by here if execv fails
+                  perror("execv");
+                  _exit(127);
+              }
+              else if (pid > 0) { // father process
+                  int status;
+                  waitpid(pid, &status, 0);
+                  std::cout << std::endl;
+              }
+              else {
+                  perror("fork");
+              }
           } else {
               std::cout << std::format("{}: command not found", command) << std::endl;
           }
