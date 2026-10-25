@@ -134,7 +134,7 @@ int main() {
               else if (pid > 0) { // father process
                   int status;
                   waitpid(pid, &status, 0);
-                  std::cout << std::endl;
+                  //std::cout << std::endl;
               }
               else {
                   perror("fork");
