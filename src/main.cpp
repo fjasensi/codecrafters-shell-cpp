@@ -74,6 +74,34 @@ std::vector<std::string> split(const std::string& str, char separator) {
     return result;
 }
 
+void run_program(std::vector<std::string> full_command, std::optional<std::string> run_path) {
+    std::vector<char*> argv;
+    
+    for (auto& arg : full_command) {
+        argv.push_back(arg.data());
+    }
+
+    argv.push_back(nullptr);
+
+    pid_t pid = fork();
+
+    // Child process
+    if (pid == 0) {
+        execv(run_path.value().c_str(), argv.data());
+
+        // only come by here if execv fails
+        perror("execv");
+        _exit(127);
+    }
+    else if (pid > 0) { // father process
+        int status;
+        waitpid(pid, &status, 0);
+    }
+    else {
+        perror("fork");
+    }
+}
+
 int main() {
   // Flush after every std::cout / std:cerr
   std::cout << std::unitbuf;
@@ -113,32 +141,7 @@ int main() {
           run_path = locate_executable_files(single_command);
 
           if (run_path.has_value()) {
-              std::vector<char*> argv;
-              
-              for (auto& arg : full_command) {
-                  argv.push_back(arg.data());
-              }
-
-              argv.push_back(nullptr);
-
-              pid_t pid = fork();
-
-              // Child process
-              if (pid == 0) {
-                  execv(run_path.value().c_str(), argv.data());
-
-                  // only come by here if execv fails
-                  perror("execv");
-                  _exit(127);
-              }
-              else if (pid > 0) { // father process
-                  int status;
-                  waitpid(pid, &status, 0);
-                  //std::cout << std::endl;
-              }
-              else {
-                  perror("fork");
-              }
+              run_program(full_command, run_path);
           } else {
               std::cout << std::format("{}: command not found", command) << std::endl;
           }
