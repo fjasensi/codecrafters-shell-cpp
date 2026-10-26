@@ -108,7 +108,7 @@ int main() {
   std::cerr << std::unitbuf;
 
   std::string command;
-  std::vector<std::string> builtinCommands {"exit", "echo", "type"};
+  std::vector<std::string> builtinCommands {"exit", "echo", "type", "pwd"};
   std::optional<std::string> run_path = std::nullopt;
 
   do {
@@ -136,6 +136,9 @@ int main() {
                   std::cout << command.substr(5) << ": not found" << std::endl;
               }
           }
+      }
+      else if (single_command == "pwd") {
+          std::cout << std::filesystem::current_path().string() << std::endl;
       }
       else {
           run_path = locate_executable_files(single_command);
