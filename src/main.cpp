@@ -44,14 +44,11 @@ std::optional<std::string> locate_executable_files(std::string command) {
     std::stringstream ss(path);
     std::string single_path;
     std::string full_path;
-    bool found = false;
     
     while (std::getline(ss, single_path, PATH_LIST_SEPARATOR)) {
         full_path = single_path + "/" + command;
 
         if (file_exists(full_path)) {
-            found = true;
-
             if (has_execute_permissions(full_path)) {
                 result = full_path;
                 break;
@@ -144,14 +141,19 @@ int main() {
           if (full_command.size() > 1) {
               std::string path_to_go = full_command[1];
 
-              if (std::filesystem::exists(path_to_go)) {
-                  if (std::filesystem::is_directory(path_to_go)) {
-                      std::filesystem::current_path(path_to_go);
-                  }
+              if (path_to_go == "~") {
+                  const char* home = std::getenv("HOME");
+                  path_to_go = home;
               }
-              else {
-                  std::cout << "cd: " << path_to_go << ": No such file or directory" << std::endl;
-              }
+              
+            if (std::filesystem::exists(path_to_go)) {
+                if (std::filesystem::is_directory(path_to_go)) {
+                    std::filesystem::current_path(path_to_go);
+                }
+            }
+            else {
+                std::cout << "cd: " << path_to_go << ": No such file or directory" << std::endl;
+            }
           }
       }
       else {
