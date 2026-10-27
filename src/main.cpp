@@ -109,8 +109,6 @@ std::vector<std::string> clean_single_quotes(const std::string& params, std::str
     }
 
     std::string rest = params.substr(command.size() + 1);
-    bool first_single_quote_found = false;
-    bool second_single_quote_found = false;
     bool inside_quotes = false;
     std::string token = "";
 
@@ -118,15 +116,11 @@ std::vector<std::string> clean_single_quotes(const std::string& params, std::str
 
     for(auto& param : rest) {
         if (param == QUOTE) {
-            if (first_single_quote_found == false) {
-                first_single_quote_found = true;
-                second_single_quote_found = false;
+            if (inside_quotes == false) {
                 inside_quotes = true;
                 token += param;
             }
-            else if (second_single_quote_found == false) {
-                first_single_quote_found = false;
-                second_single_quote_found = true;
+            else if (inside_quotes == true) {
                 inside_quotes = false;
                 token += param;
             }
