@@ -22,6 +22,7 @@ constexpr char PATH_LIST_SEPARATOR = ';';
 #define ACCESS access
 constexpr char PATH_LIST_SEPARATOR = ':';
 #endif
+#define QUOTE '\''
 
 bool find_command(const std::vector<std::string>& v, std::string command) {
     auto it = std::find(v.begin(), v.end(), command);
@@ -65,7 +66,7 @@ std::vector<std::string> split(const std::string& str, char separator) {
     std::string token;
 
     while (std::getline(ss, token, separator)) {
-        result.push_back(token);
+        if (token != "") result.push_back(token);
     }
 
     return result;
@@ -99,6 +100,71 @@ void run_program(std::vector<std::string> full_command, std::optional<std::strin
     }
 }
 
+std::vector<std::string> clean_single_quotes(const std::string& params, std::string command) {
+    std::vector<std::string> args;
+
+    // No arguments
+    if (params.size() <= command.size() + 1) {
+        return args;
+    }
+
+    std::string rest = params.substr(command.size() + 1);
+    bool first_single_quote_found = false;
+    bool second_single_quote_found = false;
+    bool inside_quotes = false;
+    std::string token = "";
+
+    if (!rest.contains(QUOTE)) return split(rest, ' ');
+
+    for(auto& param : rest) {
+        if (param == QUOTE) {
+            if (first_single_quote_found == false) {
+                first_single_quote_found = true;
+                second_single_quote_found = false;
+                inside_quotes = true;
+                token += param;
+            }
+            else if (second_single_quote_found == false) {
+                first_single_quote_found = false;
+                second_single_quote_found = true;
+                inside_quotes = false;
+                token += param;
+            }
+        }
+        else if (param == ' ' && !inside_quotes) {
+            if (token != "") args.push_back(token);
+            
+            token = "";
+        }
+        else {
+            token += param;
+        }
+    }
+
+    if (token != "") args.push_back(token);
+
+    return args;
+}
+
+std::vector<std::string> remove_single_quotes(const std::vector<std::string>& args) {
+    std::vector<std::string> result;
+    std::string result_argument = "";
+
+    for (auto& argument : args) {
+        result_argument = "";
+        
+        for (auto& c : argument) {
+            if (c != QUOTE) {
+                result_argument += c;
+            }
+        }
+
+        result.push_back(result_argument);
+    }
+
+    return result;
+}
+
 int main() {
   // Flush after every std::cout / std:cerr
   std::cout << std::unitbuf;
@@ -116,10 +182,17 @@ int main() {
       std::vector<std::string> full_command = split(command, ' ');
       std::string single_command = full_command[0];
 
+      std::vector<std::string> arguments = clean_single_quotes(command, single_command);
+      arguments = remove_single_quotes(arguments);
+
       if (single_command == "exit") return 0;
 
       if (single_command == "echo") {
-          std::cout << command.substr(5) << std::endl;
+          for (const auto& argument : arguments) {
+              std::cout << argument << " ";
+          }
+
+          std::cout << std::endl;
       }
       else if (single_command == "type") {
           if (find_command(builtinCommands, command.substr(5))) {
@@ -160,7 +233,9 @@ int main() {
           run_path = locate_executable_files(single_command);
 
           if (run_path.has_value()) {
-              run_program(full_command, run_path);
+              arguments.insert(arguments.begin(), single_command);
+              
+              run_program(arguments, run_path);
           } else {
               std::cout << std::format("{}: command not found", command) << std::endl;
           }
