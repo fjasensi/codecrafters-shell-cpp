@@ -1,7 +1,5 @@
-#include <cmath>
 #include <cstdio>
 #include <iostream>
-#include <iterator>
 #include <sstream>
 #include <string>
 #include <format>
@@ -142,16 +140,13 @@ namespace Parsing {
                     if (!inside_quotes) {
                         inside_quotes = true;
                         prev_quote = param;
-                        Parsing::add_char(token, param);
                     }
-                    else if (inside_quotes == true && param == prev_quote) {
+                    else if (param == prev_quote) {
                         inside_quotes = false;
                         prev_quote = 'c';
-                        Parsing::add_char(token, param);
                     }
-                    else if (inside_quotes && param != prev_quote) {
-                        Parsing::add_char(token, param);
-                    }
+
+                    Parsing::add_char(token, param);
                 }
                 else if (param == ' ' && !inside_quotes) {
                     if (token != "") args.push_back(token);
