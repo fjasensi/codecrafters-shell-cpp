@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <format>
@@ -23,6 +24,7 @@ constexpr char PATH_LIST_SEPARATOR = ';';
 constexpr char PATH_LIST_SEPARATOR = ':';
 #endif
 #define QUOTE '\''
+#define DOUBLE_QUOTE '\"'
 
 bool find_command(const std::vector<std::string>& v, std::string command) {
     auto it = std::find(v.begin(), v.end(), command);
@@ -100,6 +102,14 @@ void run_program(std::vector<std::string> full_command, std::optional<std::strin
     }
 }
 
+bool contains_quotes(const std::string& text) {
+    return (text.contains(QUOTE) || text.contains(DOUBLE_QUOTE));
+}
+
+bool is_quote(const char& c) {
+    return (c == QUOTE || c == DOUBLE_QUOTE);
+}
+
 std::vector<std::string> clean_single_quotes(const std::string& params, std::string command) {
     std::vector<std::string> args;
 
@@ -111,17 +121,23 @@ std::vector<std::string> clean_single_quotes(const std::string& params, std::str
     std::string rest = params.substr(command.size() + 1);
     bool inside_quotes = false;
     std::string token = "";
+    char prev_quote = 'c';
 
-    if (!rest.contains(QUOTE)) return split(rest, ' ');
+    if (!contains_quotes(rest)) return split(rest, ' ');
 
-    for(auto& param : rest) {
-        if (param == QUOTE) {
+    for(auto& param : rest) {        
+        if (is_quote(param)) {
             if (inside_quotes == false) {
                 inside_quotes = true;
+                prev_quote = param;
                 token += param;
             }
-            else if (inside_quotes == true) {
+            else if (inside_quotes == true && param == prev_quote) {
                 inside_quotes = false;
+                prev_quote = 'c';
+                token += param;
+            }
+            else if (inside_quotes && param != prev_quote) {
                 token += param;
             }
         }
@@ -143,12 +159,25 @@ std::vector<std::string> clean_single_quotes(const std::string& params, std::str
 std::vector<std::string> remove_single_quotes(const std::vector<std::string>& args) {
     std::vector<std::string> result;
     std::string result_argument = "";
+    bool inside_quotes = false;
+    char prev_quote = 'c';
 
     for (auto& argument : args) {
         result_argument = "";
         
         for (auto& c : argument) {
-            if (c != QUOTE) {
+            if (is_quote(c) && !inside_quotes) {
+                inside_quotes = true;
+                prev_quote = c;
+            }
+            else if (inside_quotes && is_quote(c) && c != prev_quote) {
+                result_argument += c;
+            }
+            else if (inside_quotes && is_quote(c) && c == prev_quote) {
+                inside_quotes = false;
+                prev_quote = 'c';
+            }
+            else if (!is_quote(c)) {
                 result_argument += c;
             }
         }
