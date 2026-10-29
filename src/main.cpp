@@ -198,7 +198,12 @@ namespace Parsing {
                 }
                 else {
                     if (!prev_is_backslash) {
-                        prev_is_backslash = true;
+                        if (inside_quotes) {
+                            add_char(result_argument, c);
+                        }
+                        else {
+                            prev_is_backslash = true;
+                        }
                     }
                     else {
                         prev_is_backslash = false;
