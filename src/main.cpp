@@ -118,6 +118,12 @@ namespace Parsing {
         return (it != v.end()) ? true : false;
     }
 
+    bool find_vector_char(const std::vector<char>& v, char c) {
+        auto it = std::find(v.begin(), v.end(), c);
+    
+        return (it != v.end()) ? true : false;
+    }
+
     std::vector<std::string> tokenize_arguments(const std::string& params, std::string command) {
         std::vector<std::string> args;
     
@@ -133,7 +139,19 @@ namespace Parsing {
         char prev_quote = 'c';
     
         for(auto& param : rest) {
-            if (param == BACK_SLASH) prev_is_backslash = true;
+            if (prev_is_backslash) {
+                add_char(token, param);
+                prev_is_backslash = false;
+                continue;
+            }
+
+            if (param == BACK_SLASH &&
+                (!inside_quotes || prev_quote == DOUBLE_QUOTE)) {
+                    
+                add_char(token, param);
+                prev_is_backslash = true;
+                continue;
+            }
     
             if (!prev_is_backslash) {
                 if (Parsing::is_quote(param)) {
@@ -171,47 +189,56 @@ namespace Parsing {
 
     std::vector<std::string> get_final_arguments(const std::vector<std::string>& args) {
         std::vector<std::string> result;
-        std::string result_argument = "";
-        bool inside_quotes = false;
-        bool prev_is_backslash = false;
-        char prev_quote = 'c';
+        std::vector<char> back_slash_scapes {'\\', '\"'};
     
-        for (auto& argument : args) {
-            result_argument = "";
-            
-            for (auto& c : argument) {
-                if (c != BACK_SLASH && !prev_is_backslash) {
-                    if (Parsing::is_quote(c) && !inside_quotes) {
-                        inside_quotes = true;
-                        prev_quote = c;
+        for (const auto& argument : args) {
+            std::string result_argument;
+            bool inside_single_quotes = false;
+            bool inside_double_quotes = false;
+            bool prev_is_backslash = false;
+
+            for (char c : argument) {
+                if (prev_is_backslash) {
+                    if (inside_double_quotes && !find_vector_char(back_slash_scapes, c)) {
+                        add_char(result_argument, BACK_SLASH);
                     }
-                    else if (inside_quotes && Parsing::is_quote(c) && c != prev_quote) {
-                        Parsing::add_char(result_argument, c);
-                    }
-                    else if (inside_quotes && Parsing::is_quote(c) && c == prev_quote) {
-                        inside_quotes = false;
-                        prev_quote = 'c';
-                    }
-                    else if (!Parsing::is_quote(c)) {
-                        Parsing::add_char(result_argument, c);
-                    }
-                }
-                else {
-                    if (!prev_is_backslash) {
-                        if (inside_quotes) {
-                            add_char(result_argument, c);
-                        }
-                        else {
-                            prev_is_backslash = true;
-                        }
-                    }
-                    else {
-                        prev_is_backslash = false;
-                        Parsing::add_char(result_argument, c);
-                    }
+    
+                    add_char(result_argument, c);
+                    prev_is_backslash = false;
+                    continue;
                 }
     
-                if (c != BACK_SLASH) prev_is_backslash = false;
+                if (inside_single_quotes) {
+                    if (c == QUOTE) {
+                        inside_single_quotes = false;
+                    } else {
+                        add_char(result_argument, c);
+                    }
+                    
+                    continue;
+                }
+    
+                if (c == BACK_SLASH) {
+                    prev_is_backslash = true;
+                    continue;
+                }
+    
+                if (c == DOUBLE_QUOTE) {
+                    inside_double_quotes = !inside_double_quotes;
+                    continue;
+                }
+    
+                if (c == QUOTE && !inside_double_quotes) {
+                    inside_single_quotes = true;
+                    continue;
+                }
+    
+                // Normal text
+                add_char(result_argument, c);
+            }
+    
+            if (prev_is_backslash) {
+                add_char(result_argument, BACK_SLASH);
             }
     
             result.push_back(result_argument);
