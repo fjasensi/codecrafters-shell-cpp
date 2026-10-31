@@ -88,6 +88,11 @@ namespace IO {
 }
 
 namespace Parsing {
+    struct MainCommand {
+        std::string name;
+        int value;
+    };
+    
     std::vector<std::string> split(const std::string& str, char separator) {
         std::vector<std::string> result;
         std::stringstream ss(str);
@@ -124,15 +129,15 @@ namespace Parsing {
         return (it != v.end()) ? true : false;
     }
 
-    std::vector<std::string> tokenize_arguments(const std::string& params, std::string command) {
+    std::vector<std::string> tokenize_arguments(const std::string& params, std::string command, int original_length) {
         std::vector<std::string> args;
     
         // No arguments
-        if (params.size() <= command.size() + 1) {
+        if (params.size() <= original_length + 1) {
             return args;
         }
     
-        std::string rest = params.substr(command.size() + 1);
+        std::string rest = params.substr(original_length + 1);
         bool inside_quotes = false;
         bool prev_is_backslash = false;
         std::string token = "";
@@ -246,6 +251,66 @@ namespace Parsing {
     
         return result;
     }
+
+    MainCommand get_command(const std::string& line) {
+        std::string command = "";
+        std::vector<char> back_slash_scapes {'\\', '\"'};
+        bool inside_single_quotes = false;
+        bool inside_double_quotes = false;
+        bool prev_is_backslash = false;
+        int length = 0;
+
+        for (const auto& c : line) {
+            if (c == ' ' && !inside_single_quotes && !inside_double_quotes && !prev_is_backslash) {
+                break;
+            }
+
+            length += 1;
+
+            if (prev_is_backslash) {
+                if (inside_double_quotes && !find_vector_char(back_slash_scapes, c)) {
+                    add_char(command, BACK_SLASH);
+                }
+
+                add_char(command, c);
+                prev_is_backslash = false;
+                continue;
+            }
+
+            if (inside_single_quotes) {
+                if (c == QUOTE) {
+                    inside_single_quotes = false;
+                } else {
+                    add_char(command, c);
+                }
+
+                continue;
+            }
+
+            if (c == BACK_SLASH) {
+                prev_is_backslash = true;
+                continue;
+            }
+
+            if (c == DOUBLE_QUOTE) {
+                inside_double_quotes = !inside_double_quotes;
+                continue;
+            }
+
+            if (c == QUOTE && !inside_double_quotes) {
+                inside_single_quotes = true;
+                continue;
+            }
+
+            add_char(command, c);
+        }
+
+        if (prev_is_backslash) {
+            add_char(command, BACK_SLASH);
+        }
+
+        return {command, length};
+    }
 }
 
 int main() {
@@ -262,10 +327,12 @@ int main() {
     
       std::getline(std::cin, command);
 
+      // TODO: Old method, delete and replace full_command and single_command
       std::vector<std::string> full_command = Parsing::split(command, ' ');
-      std::string single_command = full_command[0];
 
-      std::vector<std::string> arguments = Parsing::tokenize_arguments(command, single_command);
+      auto [single_command, length] = Parsing::get_command(command);
+
+      std::vector<std::string> arguments = Parsing::tokenize_arguments(command, single_command, length);
       arguments = Parsing::get_final_arguments(arguments);
 
       if (single_command == "exit") return 0;
